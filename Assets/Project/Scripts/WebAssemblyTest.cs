@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.UI;
 using Wasm;
 using Wasm.Interpret;
 
 public class WebAssemblyTest : MonoBehaviour
 {
+    [SerializeField] private Text _text = null;
     [SerializeField] private int _param = 100;
     [SerializeField] private string _url = "http://localhost:8080/files/test.wasm";
 
@@ -18,12 +20,17 @@ public class WebAssemblyTest : MonoBehaviour
 
     private void OnGUI()
     {
-        if (GUI.Button(new Rect(10, 10, 130, 30), "Load from file"))
+        GUI.Label(new Rect(10, 10, 50, 20), "Param: ");
+        
+        string paramStr = GUI.TextField(new Rect(70, 10, 100, 20), _param.ToString());
+        int.TryParse(paramStr, out _param);
+        
+        if (GUI.Button(new Rect(10, 50, 130, 30), "Load from file"))
         {
             LoadFromFile();
         }
-        
-        if (GUI.Button(new Rect(10, 50, 130, 30), "Load from Server"))
+
+        if (GUI.Button(new Rect(10, 90, 130, 30), "Load from Server"))
         {
             LoadFromServer();
         }
@@ -40,21 +47,8 @@ public class WebAssemblyTest : MonoBehaviour
             stream.Seek(0, SeekOrigin.Begin);
 
             WasmFile file = WasmFile.ReadBinary(stream);
-
-            var importer = new PredefinedImporter();
-            importer.DefineFunction(
-                "GetParam",
-                new DelegateFunctionDefinition(
-                    new WasmValueType[] { },
-                    new[] {WasmValueType.Int32,},
-                    GetParam));
-
-            ModuleInstance module = ModuleInstance.Instantiate(file, importer);
-            if (module.ExportedFunctions.TryGetValue("Test", out FunctionDefinition funcDef2))
-            {
-                IReadOnlyList<object> results = funcDef2.Invoke(new object[] {1,});
-                Debug.Log(results[0]);
-            }
+            
+            Perform(file);
         };
     }
 
@@ -62,7 +56,11 @@ public class WebAssemblyTest : MonoBehaviour
     {
         string path = Application.streamingAssetsPath + "/test.wasm";
         WasmFile file = WasmFile.ReadBinary(path);
+        Perform(file);
+    }
 
+    private void Perform(WasmFile file)
+    {
         var importer = new PredefinedImporter();
         importer.DefineFunction(
             "GetParam",
@@ -76,6 +74,7 @@ public class WebAssemblyTest : MonoBehaviour
         {
             IReadOnlyList<object> results = funcDef2.Invoke(new object[] {1,});
             Debug.Log(results[0]);
+            _text.text = results[0].ToString();
         }
     }
 }
